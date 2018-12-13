@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # packages
 library(data.table)
 library(ggplot2)
+library(forcats)
 ```
 
 
@@ -33,7 +34,7 @@ setDT(algae.sols)
 
 ***
 
-#* Data Visualization and Summarization
+## Data Visualization and Summarization
 
 First, we can take a look at the structure of the data. We see that we have a few categorical variables with descriptions of the time of year and the river in which the samples were taken from. 
 
@@ -55,5 +56,69 @@ ggplot(algae[!is.na(mxPH)], aes(x = mxPH)) +
   geom_histogram(aes(y = ..density..), bins = 20)
 ```
 
+A more "enriched" version of the above histogram is created below
 
+```{r}
+ggplot(algae[!is.na(mxPH)], aes(x = mxPH)) + 
+  geom_histogram(aes(y = ..density..), bins = 20) +
+  geom_density(color = "orange") + geom_rug() +
+  labs(title = "Histogram of Maximum PH",
+       x = "", y = "")
 
+```
+
+The data look fairly normal. We could also check this with a qqplot using the `qqPlot` function.
+
+```{r}
+car::qqPlot(algae$mxPH, main = "Normal QQ plot of Maximum PH",
+            ylab = "mxPH")
+```
+
+We might be interested in checking outliers using base graphics like so:
+
+```{r}
+plot(algae$NH4, xlab = "")
+abline(h = mean(algae$NH4, na.rm = TRUE), lty = 1)
+abline(h = mean(algae$NH4, na.rm = TRUE) + sd(algae$NH4, na.rm = TRUE), lty = 2)
+abline(h = median(algae$NH4, na.rm = TRUE), lty = 3)
+identify(algae$NH4)
+```
+
+It may be interesting to look at a box plot of `a1` conditioned on river size. First, we should relevel the factors to put them in the correct order.
+```{r}
+algae[, `:=`(size = fct_relevel(size, c("small", "medium", "large")),
+             speed = fct_relevel(speed, c("low", "medium", "high")),
+             season = fct_relevel(season, c("spring", "summer", "autumn",
+                                            "winter")))]
+
+ggplot(algae, aes(x = size, y = a1)) + geom_boxplot() +
+  labs(x = "River Size", y = "Algae A1")
+```
+
+Another way to create a more informative graphic than the above visualization is with a violin plot.
+
+```{r}
+ggplot(algae, aes(x = size, y = a1)) +
+  geom_violin() + geom_jitter() +
+  labs(x = "River Size", y = "Algae A1")
+```
+
+Finally, let's take a look at a continuous variable, `mnO2`. We will need to descretize this variable to condition on the value. 
+
+```{r}
+algae[!is.na(mnO2)][,
+                    minO2 := cut(mnO2, quantile(mnO2, c(0, .25, .5, .75, 1)),
+                                 include.lowest = TRUE)]
+
+ggplot(algae[!is.na(mnO2)], aes(x = a3, y = season, color = season)) +
+  geom_point() +
+  facet_wrap(~ minO2) + 
+  guides(color = FALSE)
+
+# remove the created column
+algae[, minO2 := NULL]
+```
+
+***
+
+## Unknown Values
