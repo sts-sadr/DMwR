@@ -113,7 +113,8 @@ algae[!is.na(mnO2)][,
 ggplot(algae[!is.na(mnO2)], aes(x = a3, y = season, color = season)) +
   geom_point() +
   facet_wrap(~ minO2) + 
-  guides(color = FALSE)
+  guides(color = FALSE) +
+  ggtitle("")
 
 # remove the created column
 algae[, minO2 := NULL]
@@ -122,3 +123,69 @@ algae[, minO2 := NULL]
 ***
 
 ## Unknown Values
+
+There are a few different ways that we can deal with missing values. I will demonstrate a few of them below. 
+
+We can simply remove the observations with missing values as follows
+
+```{r}
+# create a new data set for the imputations
+algae_rm = copy(algae)
+algae_rm = algae_rm[complete.cases(algae_rm)]
+
+# get proportion of rows remaining
+nrow(algae_rm)/nrow(algae)
+
+```
+
+Here we removed rows using the `complete.cases` function. However, we see that 8% of our data has been removed. Ideally, we'd like to remove as little data as possible. 
+
+***
+
+Another way to deal with NA values is to remove rows that have a certain amount of NA values. There is a function in the `DMwR2` package, `manyNAs` to find the row indices of observations that exceed a certain threshold of NA values. We can implement our own version to deal with data.tables as well. 
+
+```{r}
+manyNA = function(data, prop, returnDT = TRUE){
+  # error handling
+  stopifnot(prop >= 0 && prop <= 1)
+  # create boolean index
+  ind = apply(data, 1, function(x){
+    sum(is.na(x))/length(x) >= prop
+  })
+  
+  # return either data.table or indices depending on returnDT arg
+  if(returnDT) return(data[!ind])
+  if(!returnDT) return(which(ind))
+}
+
+# create an example from the book
+head(manyNA(algae, .2, returnDT = FALSE))
+```
+
+From here, we could remove the returned rows. Otherwise, the function will return a data.table with the NA heavy rows removed by default. 
+
+***
+
+We could consider computing with the mean or median value. We will use the median value and the `CHla` variable for example. 
+
+```{r}
+algae_rm = copy(algae)
+
+# how many NA values are there in our variable of interest
+sum(is.na(algae_rm$Chla))
+
+# first take the median of the CHla column
+CHmed = median(algae_rm$Chla, na.rm = TRUE)
+
+# next we can impute the column of interest
+algae_rm[is.na(Chla), Chla := CHmed]
+
+#check to see how many NA values are left
+sum(is.na(algae_rm$Chla))
+```
+
+We could generalize the code and use the `set` function from `data.table` to impute all numeric variables.  
+
+***
+
+A more advanced technique for imputation is exploring correlations between varaibles and using linear model imputations. 
