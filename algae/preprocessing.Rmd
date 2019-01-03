@@ -188,4 +188,9 @@ We could generalize the code and use the `set` function from `data.table` to imp
 
 ***
 
-A more advanced technique for imputation is exploring correlations between varaibles and using linear model imputations. 
+A more advanced technique for imputation is exploring correlations between variables and using linear model imputations. 
+
+```{r}
+
+```
+
